@@ -1,22 +1,39 @@
 import { TextField, IconButton, Dropdown } from "@fluentui/react";
-import { MCQQuestionType } from "./type";
-import { useState } from "react";
+import { MCQQuestionType, BranchingChoice } from "./type";
+import { useEffect, useState } from "react";
+import { useFormContext } from "../context/FormContext";
 
 interface Props {
   question: MCQQuestionType;
   isPreviewMode?: boolean;
   onQuestionChange: (
     id: string,
-    data: { question?: string; choices?: string[] }
+    data: { question?: string; choices?: BranchingChoice[] }
   ) => void;
+  onAnswerChange?: (questionId: string, answer: { choice: string }) => void;
+  answer?: { choice?: string };
 }
 
 const MCQQuestion = ({
   question,
   isPreviewMode = false,
   onQuestionChange,
+  onAnswerChange,
+  answer,
 }: Props) => {
-  const [choices, setChoices] = useState<string[]>(question.choices || []);
+  const { items, nextQuestionId, setNextQuestionId } = useFormContext();
+  const [choices, setChoices] = useState<BranchingChoice[]>(
+    Array.isArray(question.choices) ? question.choices : []
+  );
+
+  useEffect(() => {
+    if (answer?.choice) {
+      const selectedChoice = choices[parseInt(String(answer.choice))];
+      if (selectedChoice.nextQuestionId) {
+        setNextQuestionId(selectedChoice.nextQuestionId);
+      }
+    }
+  }, [nextQuestionId]);
 
   const handleQuestionChange = (value: string) => {
     onQuestionChange(question.id, { question: value });
@@ -24,13 +41,20 @@ const MCQQuestion = ({
 
   const handleChoiceChange = (index: number, value: string) => {
     const newChoices = [...choices];
-    newChoices[index] = value;
+    newChoices[index].text = value;
+    setChoices(newChoices);
+    onQuestionChange(question.id, { choices: newChoices });
+  };
+
+  const handleNextQuestionIdChange = (index: number, value: string) => {
+    const newChoices = [...choices];
+    newChoices[index].nextQuestionId = value;
     setChoices(newChoices);
     onQuestionChange(question.id, { choices: newChoices });
   };
 
   const addChoice = () => {
-    const newChoices = [...choices, ""];
+    const newChoices = [...choices, { text: "", nextQuestionId: "" }];
     setChoices(newChoices);
     onQuestionChange(question.id, { choices: newChoices });
   };
@@ -51,15 +75,25 @@ const MCQQuestion = ({
           <Dropdown
             options={choices.map((choice, index) => ({
               key: index.toString(),
-              text: choice || `Option ${index + 1}`,
+              text: choice.text || `Option ${index + 1}`,
             }))}
             placeholder="Select an option"
+            selectedKey={answer?.choice}
+            onChange={(_, option) => {
+              if (option && onAnswerChange) {
+                onAnswerChange(question.id, { choice: option.key as string });
+                const selectedChoice = choices[parseInt(String(option.key))];
+                if (selectedChoice.nextQuestionId) {
+                  setNextQuestionId(selectedChoice.nextQuestionId);
+                }
+              }
+            }}
           />
         </div>
       ) : (
         <>
           <TextField
-            value={question.question}
+            value={question.question || ""}
             onChange={(_, newValue) => {
               if (newValue !== undefined) {
                 handleQuestionChange(newValue);
@@ -73,7 +107,7 @@ const MCQQuestion = ({
               <div key={index} className="flex items-center gap-2">
                 <input type="radio" disabled />
                 <TextField
-                  value={choice}
+                  value={choice.text}
                   onChange={(_, newValue) => {
                     if (newValue !== undefined) {
                       handleChoiceChange(index, newValue);
@@ -81,6 +115,43 @@ const MCQQuestion = ({
                   }}
                   placeholder={`Choice ${index + 1}`}
                   underlined
+                />
+                <Dropdown
+                  options={items.map((item, index) => {
+                    const selfIndex = items.findIndex(
+                      (item) => item.id === question.id
+                    );
+                    return index === selfIndex
+                      ? {
+                          key: item.id,
+                          text: `${index + 1}. (self) ${
+                            item.question || "Untitled Question"
+                          }`,
+                        }
+                      : index === selfIndex + 1
+                      ? {
+                          key: item.id,
+                          text: `${index + 1}. (next) ${
+                            item.question || "Untitled Question"
+                          }`,
+                        }
+                      : {
+                          key: item.id,
+                          text: `${index + 1}. ${
+                            item.question || "Untitled Question"
+                          }`,
+                        };
+                  })}
+                  selectedKey={choice.nextQuestionId}
+                  onChange={(_, option) => {
+                    if (option) {
+                      handleNextQuestionIdChange(index, option.key as string);
+                    }
+                  }}
+                  styles={{
+                    root: { width: "300px" },
+                    dropdown: { width: "300px" },
+                  }}
                 />
                 <IconButton
                   iconProps={{ iconName: "Delete" }}

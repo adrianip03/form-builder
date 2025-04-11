@@ -9,15 +9,22 @@ interface Props {
     id: string,
     data: { question?: string; columns?: TableColumnType[] }
   ) => void;
+  onAnswerChange?: (
+    questionId: string,
+    answer: { tableAnswers: Record<string, string> }
+  ) => void;
+  answer?: { tableAnswers?: Record<string, string> };
 }
 
 const TableQuestion = ({
   question,
   isPreviewMode = false,
   onQuestionChange,
+  onAnswerChange,
+  answer,
 }: Props) => {
   const [columns, setColumns] = useState<TableColumnType[]>(
-    question.columns || []
+    Array.isArray(question.columns) ? question.columns : []
   );
 
   const handleQuestionChange = (value: string) => {
@@ -97,6 +104,18 @@ const TableQuestion = ({
     onQuestionChange(question.id, { columns: newColumns });
   };
 
+  const handleTableAnswerChange = (columnId: string, value: string) => {
+    if (onAnswerChange) {
+      const currentAnswers = answer?.tableAnswers || {};
+      onAnswerChange(question.id, {
+        tableAnswers: {
+          ...currentAnswers,
+          [columnId]: value,
+        },
+      });
+    }
+  };
+
   return (
     <div className="w-full space-y-4">
       {isPreviewMode ? (
@@ -106,24 +125,42 @@ const TableQuestion = ({
           </p>
           <div className="space-y-2">
             <div className="table-header">
-              {columns.map((column, _) => (
-                <>
-                  <div className="flex-1 space-y-2" key={column.id}>
-                    <p className="table-column-header">{column.header}</p>
-                    {column.type === "text" && (
-                      <TextField placeholder="Your answer here" underlined />
-                    )}
-                    {column.type === "mcq" && (
-                      <Dropdown
-                        options={column.choices!.map((choice, index) => ({
-                          key: index.toString(),
-                          text: choice || `Option ${index + 1}`,
-                        }))}
-                        placeholder="Select an option"
-                      />
-                    )}
-                  </div>
-                </>
+              {columns.map((column, index) => (
+                <div key={column.id} className="flex-1 space-y-2">
+                  <p className="table-column-header">
+                    {column.header || `Column ${index + 1}`}
+                  </p>
+                  {column.type === "text" && (
+                    <TextField
+                      placeholder="Your answer here"
+                      underlined
+                      value={answer?.tableAnswers?.[column.id] || ""}
+                      onChange={(_, newValue) => {
+                        if (newValue !== undefined) {
+                          handleTableAnswerChange(column.id, newValue);
+                        }
+                      }}
+                    />
+                  )}
+                  {column.type === "mcq" && (
+                    <Dropdown
+                      options={column.choices!.map((choice, index) => ({
+                        key: index.toString(),
+                        text: choice || `Option ${index + 1}`,
+                      }))}
+                      placeholder="Select an option"
+                      selectedKey={answer?.tableAnswers?.[column.id]}
+                      onChange={(_, option) => {
+                        if (option) {
+                          handleTableAnswerChange(
+                            column.id,
+                            option.key as string
+                          );
+                        }
+                      }}
+                    />
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -131,7 +168,7 @@ const TableQuestion = ({
       ) : (
         <>
           <TextField
-            value={question.question}
+            value={question.question || ""}
             onChange={(_, newValue) => {
               if (newValue !== undefined) {
                 handleQuestionChange(newValue);

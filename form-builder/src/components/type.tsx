@@ -1,5 +1,6 @@
 export interface ItemType {
   id: string;
+  question: string;
   type: "text" | "mcq" | "table" | "section";
 }
 
@@ -9,9 +10,8 @@ export interface ContainerType {
   content: ItemType[];
 }
 
-export interface TextQuestionType extends ItemType {
-  question: string;
-}
+// export interface TextQuestionType extends ItemType {
+// }
 
 export interface BranchingChoice {
   text: string;
@@ -19,7 +19,6 @@ export interface BranchingChoice {
 }
 
 export interface MCQQuestionType extends ItemType {
-  question: string;
   choices: BranchingChoice[];
 }
 
@@ -31,6 +30,5 @@ export interface TableColumnType {
 }
 
 export interface TableQuestionType extends ItemType {
-  question: string;
   columns: TableColumnType[];
 }
