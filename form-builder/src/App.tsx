@@ -168,7 +168,7 @@ function App() {
   // Submit form to backend
   const handleSubmit = () => {
     console.log("Form submitted:", { formHeader, items });
-    fetch("/api/forms", {
+    fetch("http://localhost:3001/api/forms", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -177,6 +177,7 @@ function App() {
         formName: formHeader,
         questions: items.map((item) => {
           const baseQuestion = {
+            id: item.id,
             questionType: item.type,
             questionText: item.question || "",
           };
@@ -184,29 +185,47 @@ function App() {
           if (item.type === "mcq") {
             return {
               ...baseQuestion,
-              choices: (item as MCQQuestionType).choices || [],
+              choices:
+                (item as MCQQuestionType).choices?.map((choice) => ({
+                  text: choice.text,
+                  nextQuestionId: choice.nextQuestionId,
+                })) || [],
             };
           } else if (item.type === "table") {
             return {
               ...baseQuestion,
-              columns: (item as TableQuestionType).columns || [],
+              columns:
+                (item as TableQuestionType).columns?.map((column) => ({
+                  header: column.header,
+                  type: column.type,
+                  choices: column.choices,
+                })) || [],
             };
           }
           return baseQuestion;
         }),
       }),
     })
-      .then((response) => {
+      .then(async (response) => {
         if (!response.ok) {
-          throw new Error("Network response was not ok");
+          const data = await response.json();
+          throw new Error(data.message || "Failed to submit form");
         }
         return response.json();
       })
       .then((data) => {
         console.log("Form submitted successfully:", data);
+        alert("Form submitted successfully!");
       })
       .catch((error) => {
         console.error("Error submitting form:", error);
+        if (error.message === "Failed to fetch") {
+          alert(
+            "Unable to connect to the server. Please make sure the server is running."
+          );
+        } else {
+          alert(error.message || "An error occurred while submitting the form");
+        }
       });
   };
 
@@ -238,6 +257,7 @@ function App() {
                 placeholder="Form Title"
                 underlined
                 styles={formHeaderStyles}
+                disabled={isPreviewMode}
               />
               {/* Preview/Edit Button */}
               <div className="flex gap-2">

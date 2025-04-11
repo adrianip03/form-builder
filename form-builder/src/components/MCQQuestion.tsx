@@ -31,9 +31,11 @@ const MCQQuestion = ({
       const selectedChoice = choices[parseInt(String(answer.choice))];
       if (selectedChoice.nextQuestionId) {
         setNextQuestionId(selectedChoice.nextQuestionId);
+      } else {
+        setNextQuestionId("");
       }
     }
-  }, [nextQuestionId]);
+  }, [answer?.choice, nextQuestionId]);
 
   const handleQuestionChange = (value: string) => {
     onQuestionChange(question.id, { question: value });
@@ -82,10 +84,6 @@ const MCQQuestion = ({
             onChange={(_, option) => {
               if (option && onAnswerChange) {
                 onAnswerChange(question.id, { choice: option.key as string });
-                const selectedChoice = choices[parseInt(String(option.key))];
-                if (selectedChoice.nextQuestionId) {
-                  setNextQuestionId(selectedChoice.nextQuestionId);
-                }
               }
             }}
           />

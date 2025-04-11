@@ -24,17 +24,6 @@ CREATE TABLE IF NOT EXISTS MCQChoices (
     FOREIGN KEY (next_question_id) REFERENCES Questions(question_id)
 );
 
--- Branching Logic table
-CREATE TABLE IF NOT EXISTS BranchingLogic (
-    logic_id INT AUTO_INCREMENT PRIMARY KEY,
-    question_id INT NOT NULL,
-    choice_id INT NOT NULL,
-    target_question_id INT NOT NULL,
-    FOREIGN KEY (question_id) REFERENCES Questions(question_id),
-    FOREIGN KEY (choice_id) REFERENCES MCQChoices(choice_id),
-    FOREIGN KEY (target_question_id) REFERENCES Questions(question_id)
-);
-
 -- Table Columns table
 CREATE TABLE IF NOT EXISTS TableColumns (
     column_id INT AUTO_INCREMENT PRIMARY KEY,

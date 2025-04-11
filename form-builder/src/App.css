@@ -239,7 +239,7 @@
 
 /* Dropdown Styles */
 .ms-Dropdown-container {
-  min-width: 70px;
+  width: auto;
 }
 
 .ms-Dropdown-title {

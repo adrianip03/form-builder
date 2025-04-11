@@ -4,6 +4,7 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const { AppError, ValidationError, DatabaseError } = require('./errors');
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -33,7 +34,7 @@ const executeSchema = () => {
     db.query(statement, (err) => {
       if (err) {
         console.error('Error executing schema statement:', err);
-        return;
+        throw new DatabaseError('Failed to initialize database schema', err);
       }
     });
   });
@@ -43,7 +44,7 @@ const executeSchema = () => {
 db.connect((err) => {
   if (err) {
     console.error('Error connecting to the database:', err);
-    return;
+    throw new DatabaseError('Failed to connect to database', err);
   }
   console.log('Connected to MySQL database');
   executeSchema();
@@ -51,157 +52,295 @@ db.connect((err) => {
 });
 
 // Test endpoint
-app.get('/api/test', (req, res) => {
+app.get('/api/test', (req, res, next) => {
   db.query('SELECT 1 + 1 AS solution', (err, results) => {
     if (err) {
-      console.error('Error executing query:', err);
-      return res.status(500).json({ error: 'Database error' });
+      next(err);
+      return;
     }
     res.json({ message: 'Database connection successful', result: results[0].solution });
   });
 });
 
-// Helper function to save a question and its choices
-const saveQuestion = (formId, question, callback) => {
-  const { questionType, questionText, choices, columns, branching } = question;
-  
-  // Insert the question
+// Preview all tables endpoint
+app.get('/api/preview-tables', (req, res, next) => {
+  // Query to get all table names
   db.query(
-    'INSERT INTO Questions (form_id, question_type, question_text) VALUES (?, ?, ?)',
-    [formId, questionType, questionText],
-    (err, result) => {
-      if (err) return callback(err);
-      
-      const questionId = result.insertId;
-      
-      if (questionType === 'mcq' && choices) {
-        // Save MCQ choices
-        const values = choices.map(choice => [questionId, choice.text]);
-        db.query(
-          'INSERT INTO MCQChoices (question_id, choice_text) VALUES ?',
-          [values],
-          (err, result) => {
-            if (err) return callback(err);
-            
-            // If there's branching logic, save it
-            if (branching) {
-              const choiceIds = result.insertId - choices.length + 1; // Get the first inserted choice ID
-              const branchingValues = choices.map((choice, index) => {
-                if (choice.nextQuestionId) {
-                  return [questionId, choiceIds + index, choice.nextQuestionId];
-                }
-                return null;
-              }).filter(Boolean);
-              
-              if (branchingValues.length > 0) {
-                db.query(
-                  'INSERT INTO BranchingLogic (question_id, choice_id, target_question_id) VALUES ?',
-                  [branchingValues],
-                  (err) => callback(err)
-                );
-              } else {
-                callback(null);
-              }
-            } else {
-              callback(null);
-            }
-          }
-        );
-      } else if (questionType === 'table' && columns) {
-        // Save table columns and their choices
-        let remainingColumns = columns.length;
-        
-        columns.forEach(column => {
+    `SELECT TABLE_NAME as tableName 
+     FROM information_schema.tables 
+     WHERE table_schema = ?`,
+    [process.env.DB_NAME],
+    (err, tables) => {
+      if (err) {
+        console.error('Error fetching tables:', err);
+        next(new DatabaseError('Failed to fetch tables', err));
+        return;
+      }
+
+      // For each table, get its structure and sample data
+      Promise.all(tables.map(table => {
+        return new Promise((resolve, reject) => {
+          const tableName = table.tableName;
+          
+          // Get table structure
           db.query(
-            'INSERT INTO TableColumns (question_id, column_name, column_type) VALUES (?, ?, ?)',
-            [questionId, column.name, column.type],
-            (err, result) => {
-              if (err) return callback(err);
-              
-              const columnId = result.insertId;
-              
-              if (column.type === 'mcq' && column.choices) {
-                const values = column.choices.map(choice => [columnId, choice]);
-                db.query(
-                  'INSERT INTO TableColumnChoices (column_id, choice_text) VALUES ?',
-                  [values],
-                  (err) => {
-                    if (err) return callback(err);
-                    if (--remainingColumns === 0) callback(null);
-                  }
-                );
-              } else {
-                if (--remainingColumns === 0) callback(null);
+            `SELECT column_name, data_type, is_nullable, column_key 
+             FROM information_schema.columns 
+             WHERE table_schema = ? AND table_name = ?`,
+            [process.env.DB_NAME, tableName],
+            (err, structure) => {
+              if (err) {
+                reject(new DatabaseError(`Failed to fetch structure for table ${tableName}`, err));
+                return;
               }
+
+              // Get sample data (limit to 5 rows)
+              db.query(
+                `SELECT * FROM \`${tableName}\` LIMIT 5`,
+                (err, data) => {
+                  if (err) {
+                    reject(new DatabaseError(`Failed to fetch data for table ${tableName}`, err));
+                    return;
+                  }
+
+                  resolve({
+                    tableName,
+                    structure,
+                    sampleData: data
+                  });
+                }
+              );
             }
           );
         });
-      } else {
-        callback(null);
-      }
+      }))
+      .then(results => {
+        res.json({
+          status: 'success',
+          data: results
+        });
+      })
+      .catch(err => {
+        next(err);
+      });
     }
   );
-};
+});
 
-// Save form endpoint
-app.post('/api/forms', (req, res) => {
-  const { formName, questions } = req.body;
+// Helper function to validate form data
+const validateFormData = (formName, questions) => {
+  const errors = [];
   
-  if (!formName || !questions || !Array.isArray(questions)) {
-    return res.status(400).json({ error: 'Invalid form data' });
+  if (!formName || typeof formName !== 'string' || formName.trim().length === 0) {
+    errors.push('Form name is required and must be a non-empty string');
   }
   
-  // Start a transaction
-  db.beginTransaction((err) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to start transaction' });
-    }
-    
-    // Insert the form
-    db.query(
-      'INSERT INTO Forms (form_name) VALUES (?)',
-      [formName],
-      (err, result) => {
-        if (err) {
-          return db.rollback(() => {
-            res.status(500).json({ error: 'Failed to save form' });
-          });
-        }
-        
-        const formId = result.insertId;
-        let remainingQuestions = questions.length;
-        
-        // Save each question
-        questions.forEach(question => {
-          saveQuestion(formId, question, (err) => {
-            if (err) {
-              return db.rollback(() => {
-                res.status(500).json({ error: 'Failed to save questions' });
-              });
-            }
-            
-            if (--remainingQuestions === 0) {
-              // All questions saved successfully
-              db.commit((err) => {
-                if (err) {
-                  return db.rollback(() => {
-                    res.status(500).json({ error: 'Failed to commit transaction' });
-                  });
-                }
-                res.status(201).json({ message: 'Form saved successfully', formId });
-              });
-            }
-          });
+  if (!Array.isArray(questions) || questions.length === 0) {
+    errors.push('Questions array is required and must not be empty');
+  } else {
+    questions.forEach((question, index) => {
+      if (!question.questionType) {
+        errors.push(`Question ${index + 1}: questionType is required`);
+      }
+      if (!question.questionText) {
+        errors.push(`Question ${index + 1}: questionText is required`);
+      }
+      if (question.questionType === 'mcq' && (!question.choices || !Array.isArray(question.choices) || question.choices.length === 0)) {
+        errors.push(`Question ${index + 1}: choices array is required for MCQ questions`);
+      }
+      if (question.questionType === 'table' && (!question.columns || !Array.isArray(question.columns) || question.columns.length === 0)) {
+        errors.push(`Question ${index + 1}: columns array is required for table questions`);
+      }
+      if (question.questionType === 'table') {
+        question.columns.forEach(column => {
+          if (column.type === 'mcq' && (!column.choices || !Array.isArray(column.choices) || column.choices.length === 0)) {
+            errors.push(`Question ${index + 1}: choices array is required for table mcq columns`);
+          }
         });
       }
-    );
-  });
+    });
+  }
+  
+  return errors;
+};
+
+
+// Save form endpoint
+app.post('/api/forms', async (req, res, next) => {
+  try {
+    const { formName, questions } = req.body;
+    
+    // Validate form data
+    const validationErrors = validateFormData(formName, questions);
+    if (validationErrors.length > 0) {
+      throw new ValidationError('Invalid form data', { errors: validationErrors });
+    }
+    
+    // Start a transaction
+    await new Promise((resolve, reject) => {
+      db.beginTransaction((err) => {
+        if (err) {
+          console.error('Error starting transaction:', err);
+          reject(new DatabaseError('Failed to start transaction', err));
+          return;
+        }
+        resolve();
+      });
+    });
+    
+    // Insert the form
+    const formResult = await new Promise((resolve, reject) => {
+      db.query(
+        'INSERT INTO Forms (form_name) VALUES (?)',
+        [formName],
+        (err, result) => {
+          if (err) {
+            console.error('Error saving form:', err);
+            reject(new DatabaseError('Failed to save form', err));
+            return;
+          }
+          resolve(result);
+        }
+      );
+    });
+    
+    const formId = formResult.insertId;
+    
+    // Save all questions in parallel and collect their IDs
+    const questionResults = await Promise.all(questions.map(question => 
+      new Promise((resolve, reject) => {
+        db.query(
+          'INSERT INTO Questions (form_id, question_type, question_text) VALUES (?, ?, ?)',
+          [formId, question.questionType, question.questionText],
+          (err, result) => {
+            if (err) {
+              reject(new DatabaseError('Failed to save question', err));
+              return;
+            }
+            resolve({ clientId: question.id, dbId: result.insertId });
+          }
+        );
+      })
+    ));
+    
+    // Create a map of client IDs to database IDs
+    const questionIdMap = new Map(questionResults.map(r => [r.clientId, r.dbId]));
+    
+    console.log(questionIdMap);
+
+    // Save MCQ choices and table columns in parallel
+    await Promise.all(questions.map(question => {
+      const dbQuestionId = questionIdMap.get(question.id);
+      
+      if (question.questionType === 'mcq' && question.choices) {
+        const values = question.choices.map(choice => { 
+          console.log(choice.nextQuestionId, questionIdMap.get(choice.nextQuestionId));
+          return[
+          dbQuestionId,
+          choice.text,
+          choice.nextQuestionId ? questionIdMap.get(choice.nextQuestionId) : null
+        ]});
+
+        
+        return new Promise((resolve, reject) => {
+          db.query(
+            'INSERT INTO MCQChoices (question_id, choice_text, next_question_id) VALUES ?',
+            [values],
+            (err) => {
+              if (err) {
+                reject(new DatabaseError('Failed to save MCQ choices', err));
+                return;
+              }
+              resolve();
+            }
+          );
+        });
+      } else if (question.questionType === 'table' && question.columns) {
+        return Promise.all(question.columns.map(column => {
+          return new Promise((resolve, reject) => {
+            db.query(
+              'INSERT INTO TableColumns (question_id, column_name, column_type) VALUES (?, ?, ?)',
+              [dbQuestionId, column.header, column.type],
+              (err, result) => {
+                if (err) {
+                  reject(new DatabaseError('Failed to save table column', err));
+                  return;
+                }
+                
+                if (column.type === 'mcq' && column.choices) {
+                  const values = column.choices.map(choice => [result.insertId, choice]);
+                  db.query(
+                    'INSERT INTO TableColumnChoices (column_id, choice_text) VALUES ?',
+                    [values],
+                    (err) => {
+                      if (err) {
+                        reject(new DatabaseError('Failed to save table column choices', err));
+                        return;
+                      }
+                      resolve();
+                    }
+                  );
+                } else {
+                  resolve();
+                }
+              }
+            );
+          });
+        }));
+      }
+      return Promise.resolve();
+    }));
+    
+    // Commit transaction
+    await new Promise((resolve, reject) => {
+      db.commit((err) => {
+        if (err) {
+          console.error('Error committing transaction:', err);
+          reject(new DatabaseError('Failed to commit transaction', err));
+          return;
+        }
+        resolve();
+      });
+    });
+    
+    res.status(201).json({ message: 'Form saved successfully', formId });
+  } catch (err) {
+    // Rollback transaction on error
+    await new Promise((resolve) => {
+      db.rollback(() => resolve());
+    });
+    next(err);
+  }
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  console.error('Error:', err);
+  
+  if (err instanceof ValidationError) {
+    return res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+      details: err.details
+    });
+  }
+  
+  if (err instanceof DatabaseError) {
+    console.error('Database error details:', err.originalError);
+  }
+  
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(err.statusCode || 500).json({
+      status: 'error',
+      message: 'Internal Server Error'
+    });
+  }
+  
+  res.status(err.statusCode || 500).json({
+    status: err.status || 'error',
+    message: err.message,
+    stack: err.stack
+  });
 });
 
 // Start server
