@@ -12,6 +12,7 @@ import {
 import TextQuestion from "./TextQuestion";
 import MCQQuestion from "./MCQQuestion";
 import TableQuestion from "./TableQuestion";
+import { CSSProperties } from "react";
 
 initializeIcons();
 
@@ -30,19 +31,23 @@ const Item = ({
   isNew = false,
   onQuestionChange,
 }: Props) => {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: item.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    isDragging,
+    transform,
+    transition,
+  } = useSortable({ id: item.id });
   const { setNodeRef: setDragHandleRef } = useDraggable({
     id: item.id,
   });
 
-  const style =
-    transform && transition
-      ? {
-          transform: CSS.Transform.toString(transform),
-          transition,
-        }
-      : undefined;
+  const style: CSSProperties = {
+    opacity: isDragging ? 0.4 : undefined,
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
 
   const renderQuestion = () => {
     switch (item.type) {
