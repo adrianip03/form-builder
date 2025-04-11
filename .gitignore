@@ -1,0 +1,14 @@
+/server/node_modules
+/server/.env
+/server/dist
+/server/build
+/server/coverage
+/server/logs
+/server/temp
+/form-builder/node_modules
+/form-builder/.env
+/form-builder/dist
+/form-builder/build
+/form-builder/coverage
+/form-builder/logs
+/form-builder/temp

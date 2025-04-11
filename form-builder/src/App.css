@@ -120,12 +120,12 @@
 }
 
 .outline {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--neutralSecondaryAlt);
   padding: 1.5rem;
 }
 
 .top-outline {
-  border-top: 2px solid #3b82f6;
+  border-top: 2px solid var(--themePrimary);
 }
 
 /* Typography */
@@ -271,4 +271,31 @@
 
 .ms-Dropdown-item:hover {
   background-color: #f3f4f6;
+}
+
+/* Add CSS variables for Fluent UI colors */
+:root {
+  --neutralLight: #f3f2f1;
+  --neutralLighter: #faf9f8;
+  --neutralLighterAlt: #faf9f8;
+  --neutralPrimary: #323130;
+  --neutralPrimaryAlt: #3b3a39;
+  --neutralSecondary: #605e5c;
+  --neutralSecondaryAlt: #8a8886;
+  --neutralTertiary: #a19f9d;
+  --neutralTertiaryAlt: #c8c6c4;
+  --neutralQuaternary: #d2d0ce;
+  --neutralQuaternaryAlt: #e1dfdd;
+  --neutralDark: #201f1e;
+  --black: #000000;
+  --white: #ffffff;
+  --themePrimary: #0078d4;
+  --themeLighterAlt: #eff6fc;
+  --themeLighter: #deecf9;
+  --themeLight: #c7e0f4;
+  --themeTertiary: #71afe5;
+  --themeSecondary: #2b88d8;
+  --themeDarkAlt: #106ebe;
+  --themeDark: #005a9e;
+  --themeDarker: #004578;
 }

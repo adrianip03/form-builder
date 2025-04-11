@@ -5,7 +5,6 @@ import {
   closestCenter,
   DndContext,
   DragEndEvent,
-  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   KeyboardSensor,
@@ -15,10 +14,9 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import {
-  ContainerType,
   ItemType,
-  TableQuestionType,
   MCQQuestionType,
+  TableQuestionType,
   TextQuestionType,
 } from "./components/type";
 import Item, { InvisibleDropTarget } from "./components/Item";
@@ -28,216 +26,71 @@ import {
   PrimaryButton,
   DefaultButton,
 } from "@fluentui/react";
-import Section from "./components/Section";
 
 function generateId(prefix = "") {
   return `${prefix}-${nanoid()}`;
 }
 
 const newItems: ItemType[] = [
-  { id: generateId("New-Item"), type: "section" },
   { id: generateId("New-Item"), type: "text" },
   { id: generateId("New-Item"), type: "mcq" },
   { id: generateId("New-Item"), type: "table" },
 ];
 
 function App() {
-  const [items, setItems] = useState<ContainerType[]>([
-    // { id: generateId(), header: "Untitled Section", content: [] },
-  ]);
-  const [activeType, setActiveType] = useState<
-    "section" | "question" | "newItem"
-  >("section");
-  const [activeSectionId, setActiveSectionId] = useState<number>();
-  const [activeQuestionId, setActiveQuestionId] = useState<number>();
-  const [overSectionId, setOverSectionId] = useState<number>();
-  const [overQuestionId, setOverQuestionId] = useState<number>();
+  const [items, setItems] = useState<ItemType[]>([]);
+  const [activeId, setActiveId] = useState<string>();
+  const [overId, setOverId] = useState<string>();
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [formHeader, setFormHeader] = useState<string>("");
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-  const [formHeader, setFormHeader] = useState<string>("");
-
-  function findContainerOfItem(activeId: string) {
-    let itemIndex;
-    for (const [sectionIndex, section] of items.entries()) {
-      itemIndex = section.content.findIndex((item) => item.id === activeId);
-      if (itemIndex !== -1) {
-        return { sectionId: sectionIndex, questionId: itemIndex };
-      }
-    }
-  }
 
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
-
-    const activeIndex = items.findIndex((item) => item.id === active.id);
-    if (activeIndex !== -1) {
-      setActiveType("section");
-      setActiveSectionId(activeIndex);
-    } else {
-      const result = findContainerOfItem(active.id as string);
-      if (result) {
-        setActiveType("question");
-        const { sectionId: section, questionId: question } = result;
-        setActiveSectionId(section);
-        setActiveQuestionId(question);
-      } else {
-        const isNewItem = newItems.some((item) => item.id === active.id);
-        if (isNewItem) {
-          setActiveType("newItem");
-        }
-      }
-    }
-  }
-
-  function handleDragOver(event: DragOverEvent) {
-    const { over } = event;
-    if (!over) return;
-
-    const overResult = findContainerOfItem(over.id as string);
-    if (overResult) {
-      const { sectionId: sectionId, questionId: questionId } = overResult;
-      setOverSectionId(sectionId);
-      setOverQuestionId(questionId);
-    } else if (over.id.toString().endsWith("-end")) {
-      const sectionId = items.findIndex(
-        (section) => over.id === `${section.id}-end`
-      );
-      if (sectionId !== -1) {
-        setOverSectionId(sectionId);
-        setOverQuestionId(items[sectionId].content.length);
-      }
-    }
+    setActiveId(active.id as string);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over) return;
 
-    if (activeType === "newItem") {
+    if (active.id.toString().startsWith("New-Item")) {
       const draggedItem = newItems.find((item) => item.id === active.id);
-
       if (draggedItem) {
-        if (draggedItem.type === "section") {
-          // For section type, only create new section if dropped outside existing sections
-          if (
-            !over.id.toString().includes("-end") ||
-            !over.id.toString().includes("-start")
-          ) {
-            const newSection = {
-              id: generateId(),
-              header: "",
-              content: [],
-            };
-            const overIndex = items.findIndex((item) => item.id === over.id);
-
-            if (overIndex !== -1) {
-              setItems((prev) => {
-                const newItems = [...prev];
-                newItems.splice(overIndex, 0, newSection);
-                return newItems;
-              });
-            } else {
-              const result = findContainerOfItem(over.id as string);
-              if (result) {
-                const { sectionId } = result;
-                setItems((prev) => {
-                  const newItems = [...prev];
-                  newItems.splice(sectionId, 0, newSection);
-                  return newItems;
-                });
-              } else {
-                setItems((prev) => [...prev, newSection]);
-              }
-            }
-          }
-        } else if (overSectionId !== undefined) {
-          // For other types, add to existing section
-          const newItem = {
-            id: generateId(),
-            type: draggedItem.type,
-          };
+        const newItem = {
+          ...draggedItem,
+          id: generateId(),
+        };
+        const overIndex = items.findIndex((item) => item.id === over.id);
+        if (overIndex !== -1) {
           setItems((prev) => {
-            const updatedItems = prev.map((section) => ({
-              ...section,
-              content: [...section.content],
-            }));
-            if (
-              overQuestionId !== undefined &&
-              overQuestionId !== items[overSectionId].content.length
-            ) {
-              updatedItems[overSectionId].content.splice(
-                overQuestionId,
-                0,
-                newItem
-              );
-            } else {
-              updatedItems[overSectionId].content.push(newItem);
-            }
-            return updatedItems;
+            const newItems = [...prev];
+            newItems.splice(overIndex, 0, newItem);
+            return newItems;
           });
+        } else {
+          setItems((prev) => [...prev, newItem]);
         }
       }
     } else if (over.id.toString().startsWith("New-Item")) {
       // If dropped in newItems container, delete the item
-      if (activeType === "section") {
-        setItems((prev) => prev.filter((item) => item.id !== active.id));
-      } else if (
-        activeType === "question" &&
-        activeSectionId !== undefined &&
-        activeQuestionId !== undefined
-      ) {
-        setItems((prev) => {
-          const updatedItems = prev.map((section) => ({
-            ...section,
-            content: [...section.content],
-          }));
-          updatedItems[activeSectionId].content.splice(activeQuestionId, 1);
-          return updatedItems;
-        });
-      }
-    } else if (activeType === "section" && active.id !== over.id) {
-      setItems((prev) => {
-        const oldIndex = prev.findIndex((item) => item.id === active.id);
-        const newIndex = prev.findIndex((item) => item.id === over.id);
+      setItems((prev) => prev.filter((item) => item.id !== active.id));
+    } else if (active.id !== over.id) {
+      setItems((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
         return arrayMove(items, oldIndex, newIndex);
       });
-    } else {
-      // for cross section item
-      if (activeType === "question" && overSectionId !== activeSectionId) {
-        if (
-          overSectionId === undefined ||
-          activeSectionId === undefined ||
-          activeQuestionId === undefined ||
-          overQuestionId === undefined
-        )
-          return;
-        setItems((prev) => {
-          const updatedItems = prev.map((section) => ({
-            ...section,
-            content: [...section.content],
-          }));
-          const question =
-            updatedItems[activeSectionId].content[activeQuestionId];
-          updatedItems[overSectionId].content.splice(
-            overQuestionId,
-            0,
-            question
-          );
-          updatedItems[activeSectionId].content.splice(activeQuestionId, 1);
-
-          return updatedItems;
-        });
-      }
     }
-    setActiveQuestionId(undefined);
-    setActiveSectionId(undefined);
-    setOverSectionId(undefined);
-    setOverQuestionId(undefined);
+
+    setActiveId(undefined);
+    setOverId(undefined);
   }
 
   const formHeaderStyles: Partial<ITextFieldStyles> = {
@@ -248,92 +101,10 @@ function App() {
     },
   };
 
-  const handleHeaderChange = (value: string, id: string) => {
-    console.log("handleHeaderChange called with:", value, id);
-    setItems((prev) => {
-      const updatedItems = prev.map((section) =>
-        section.id === id ? { ...section, header: value } : section
-      );
-      console.log("Updated items:", updatedItems);
-      return updatedItems;
-    });
-  };
-
-  const getActive = () => {
-    if (activeType === "section" && activeSectionId) {
-      const section = items[activeSectionId];
-      return (
-        <Section
-          container={section}
-          items={section.content}
-          key={section.id}
-          handleHeaderChange={handleHeaderChange}
-          isOver={
-            overSectionId !== undefined &&
-            activeSectionId !== overSectionId &&
-            activeType === "section" &&
-            section.id === items[overSectionId].id
-          }
-        >
-          <InvisibleDropTarget
-            id={`${section.id}-start`}
-            isOver={
-              activeSectionId !== undefined &&
-              overSectionId !== undefined &&
-              activeType !== "section" &&
-              activeSectionId !== overSectionId &&
-              section.id === items[overSectionId].id &&
-              overQuestionId === 0
-            }
-          />
-          {section.content.map((question) => (
-            <Item
-              key={question.id}
-              item={question}
-              isOver={
-                overSectionId !== undefined &&
-                overQuestionId !== undefined &&
-                activeType !== "section" &&
-                activeSectionId !== overSectionId &&
-                section.id === items[overSectionId].id &&
-                question.id === items[overSectionId].content[overQuestionId]?.id
-              }
-            />
-          ))}
-        </Section>
-      );
-    } else {
-      if (!activeQuestionId || !activeSectionId) return null;
-      const question = items[activeSectionId].content[activeQuestionId];
-      return <Item key={question.id} item={question} isOver={false} />;
-    }
-  };
-
-  const handleQuestionChange = (
-    id: string,
-    data: {
-      question?: string;
-      choices?: string[];
-      columns?: string[];
-      rows?: string[][];
-    }
-  ) => {
-    const result = findContainerOfItem(id);
-    if (result) {
-      const { sectionId, questionId } = result;
-      setItems((prev) => {
-        const updatedItems = prev.map((section) => ({
-          ...section,
-          content: [...section.content],
-        }));
-        updatedItems[sectionId].content[questionId] = {
-          ...updatedItems[sectionId].content[questionId],
-          ...data,
-        };
-        console.log("Updated items:", updatedItems);
-        return updatedItems;
-      });
-    }
+  const handleQuestionChange = (id: string, data: any) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...data } : item))
+    );
   };
 
   const handleSubmit = () => {
@@ -344,28 +115,28 @@ function App() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        header: formHeader,
-        items: items.map((section) => ({
-          ...section,
-          content: section.content.map((item) => {
-            if (item.type === "text") {
-              return { ...item, question: (item as TextQuestionType).question };
-            } else if (item.type === "mcq") {
-              return {
-                ...item,
-                question: (item as MCQQuestionType).question,
-                choices: (item as MCQQuestionType).choices,
-              };
-            } else if (item.type === "table") {
-              return {
-                ...item,
-                question: (item as TableQuestionType).question,
-                columns: (item as TableQuestionType).columns,
-              };
-            }
-            return item;
-          }),
-        })),
+        formName: formHeader,
+        questions: items.map((item) => {
+          const baseQuestion = {
+            questionType: item.type,
+            questionText:
+              (item as TextQuestionType | MCQQuestionType | TableQuestionType)
+                .question || "",
+          };
+
+          if (item.type === "mcq") {
+            return {
+              ...baseQuestion,
+              choices: (item as MCQQuestionType).choices || [],
+            };
+          } else if (item.type === "table") {
+            return {
+              ...baseQuestion,
+              columns: (item as TableQuestionType).columns || [],
+            };
+          }
+          return baseQuestion;
+        }),
       }),
     })
       .then((response) => {
@@ -376,13 +147,10 @@ function App() {
       })
       .then((data) => {
         console.log("Form submitted successfully:", data);
-        // Optionally show success message or redirect
       })
       .catch((error) => {
         console.error("Error submitting form:", error);
-        // Optionally show error message to user
       });
-    // TODO: Submit form to server
   };
 
   return (
@@ -391,7 +159,6 @@ function App() {
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
     >
       <div>
         <div className="flex justify-between items-center p-4 border-b">
@@ -410,10 +177,7 @@ function App() {
           <div className="flex gap-2">
             <DefaultButton
               text={isPreviewMode ? "Edit" : "Preview"}
-              onClick={() => {
-                setIsPreviewMode(!isPreviewMode);
-                console.log(items);
-              }}
+              onClick={() => setIsPreviewMode(!isPreviewMode)}
             />
             {isPreviewMode && (
               <PrimaryButton text="Submit" onClick={handleSubmit} />
@@ -427,62 +191,25 @@ function App() {
             }`}
           >
             <div className="outline p-2">
-              {items &&
-                items.map((section) => {
-                  return (
-                    <Section
-                      key={section.id}
-                      container={section}
-                      items={section.content}
-                      handleHeaderChange={handleHeaderChange}
-                      isPreviewMode={isPreviewMode}
-                      isOver={
-                        overSectionId !== undefined &&
-                        activeSectionId !== overSectionId &&
-                        activeType === "section" &&
-                        section.id === items[overSectionId].id
-                      }
-                    >
-                      {section.content.map((question) => (
-                        <Item
-                          key={question.id}
-                          item={question}
-                          isOver={
-                            overSectionId !== undefined &&
-                            overQuestionId !== undefined &&
-                            activeType !== "section" &&
-                            section.id === items[overSectionId].id &&
-                            question.id ===
-                              items[overSectionId].content[overQuestionId]?.id
-                          }
-                          onQuestionChange={handleQuestionChange}
-                          isPreviewMode={isPreviewMode}
-                        />
-                      ))}
-                      <InvisibleDropTarget
-                        id={`${section.id}-end`}
-                        isOver={
-                          overSectionId !== undefined &&
-                          activeSectionId !== overSectionId &&
-                          activeType !== "section" &&
-                          section.id === items[overSectionId].id &&
-                          overQuestionId === section.content.length
-                        }
-                      />
-                    </Section>
-                  );
-                })}
+              {items.map((item) => (
+                <Item
+                  key={item.id}
+                  item={item}
+                  isOver={overId === item.id}
+                  onQuestionChange={handleQuestionChange}
+                  isPreviewMode={isPreviewMode}
+                />
+              ))}
+              <InvisibleDropTarget
+                id="form-end"
+                isOver={overId === "form-end"}
+              />
             </div>
           </div>
           {!isPreviewMode && (
             <div className="add-element-panel gap-8 p-1">
-              <Section
-                key={generateId()}
-                container={{ id: "New-Item", header: "New Items", content: [] }}
-                items={[]}
-                isNew={true}
-                handleHeaderChange={handleHeaderChange}
-              >
+              <div className="outline p-2">
+                <h2 className="text-xl font-semibold mb-4">Add Question</h2>
                 {newItems.map((newItem) => (
                   <Item
                     key={newItem.id}
@@ -491,13 +218,22 @@ function App() {
                     isNew={true}
                   />
                 ))}
-                <InvisibleDropTarget id={`New-Item-end`} isOver={false} />
-              </Section>
+              </div>
             </div>
           )}
         </div>
       </div>
-      <DragOverlay>{getActive()}</DragOverlay>
+      <DragOverlay>
+        {activeId ? (
+          <Item
+            item={
+              items.find((item) => item.id === activeId) ||
+              newItems.find((item) => item.id === activeId)!
+            }
+            isOver={false}
+          />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
