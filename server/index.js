@@ -131,39 +131,69 @@ app.get('/api/preview-tables', (req, res, next) => {
 const validateFormData = (formName, questions) => {
   const errors = [];
   
+  // Validate form name
   if (!formName || typeof formName !== 'string' || formName.trim().length === 0) {
     errors.push('Form name is required and must be a non-empty string');
+  } else if (!/^[a-zA-Z0-9\s\-_]+$/.test(formName)) {
+    errors.push('Form name contains invalid characters');
   }
   
   if (!Array.isArray(questions) || questions.length === 0) {
     errors.push('Questions array is required and must not be empty');
   } else {
     questions.forEach((question, index) => {
-      if (!question.questionType) {
-        errors.push(`Question ${index + 1}: questionType is required`);
+      // Validate question type
+      const validTypes = ['text', 'mcq', 'table', 'section'];
+      if (!question.questionType || !validTypes.includes(question.questionType)) {
+        errors.push(`Question ${index + 1}: Invalid question type`);
       }
-      if (!question.questionText) {
+      
+      // Validate question text
+      if (!question.questionText || typeof question.questionText !== 'string' || question.questionText.trim().length === 0) {
         errors.push(`Question ${index + 1}: questionText is required`);
+      } else if (question.questionText.length > 1000) {
+        errors.push(`Question ${index + 1}: questionText must be less than 1000 characters`);
       }
-      if (question.questionType === 'mcq' && (!question.choices || !Array.isArray(question.choices) || question.choices.length === 0)) {
-        errors.push(`Question ${index + 1}: choices array is required for MCQ questions`);
+      
+      // Validate MCQ choices
+      if (question.questionType === 'mcq') {
+        if (!question.choices || !Array.isArray(question.choices) || question.choices.length === 0) {
+          errors.push(`Question ${index + 1}: choices array is required for MCQ questions`);
+        } else {
+          question.choices.forEach((choice, choiceIndex) => {
+            if (!choice.text || typeof choice.text !== 'string' || choice.text.trim().length === 0) {
+              errors.push(`Question ${index + 1}, Choice ${choiceIndex + 1}: text is required`);
+            }
+            if (choice.nextQuestionId && typeof choice.nextQuestionId !== 'string') {
+              errors.push(`Question ${index + 1}, Choice ${choiceIndex + 1}: nextQuestionId must be a string`);
+            }
+          });
+        }
       }
-      if (question.questionType === 'table' && (!question.columns || !Array.isArray(question.columns) || question.columns.length === 0)) {
-        errors.push(`Question ${index + 1}: columns array is required for table questions`);
-      }
+      
+      // Validate table columns
       if (question.questionType === 'table') {
-        question.columns.forEach(column => {
-          if (column.type === 'mcq' && (!column.choices || !Array.isArray(column.choices) || column.choices.length === 0)) {
-            errors.push(`Question ${index + 1}: choices array is required for table mcq columns`);
-          }
-        });
+        if (!question.columns || !Array.isArray(question.columns) || question.columns.length === 0) {
+          errors.push(`Question ${index + 1}: columns array is required for table questions`);
+        } else {
+          question.columns.forEach((column, columnIndex) => {
+            if (!column.header || typeof column.header !== 'string' || column.header.trim().length === 0 ) {
+              errors.push(`Question ${index + 1}, Column ${columnIndex + 1}: header is required`);
+            }
+            if (!column.type || !['text', 'mcq'].includes(column.type)) {
+              errors.push(`Question ${index + 1}, Column ${columnIndex + 1}: invalid column type`);
+            }
+            if (column.type === 'mcq' && (!column.choices || !Array.isArray(column.choices) || column.choices.length === 0)) {
+              errors.push(`Question ${index + 1}, Column ${columnIndex + 1}: choices array is required for mcq columns`);
+            }
+          });
+        }
       }
     });
   }
   
   return errors;
 };
-
 
 // Save form endpoint
 app.post('/api/forms', async (req, res, next) => {
