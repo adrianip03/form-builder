@@ -42,6 +42,7 @@ const Item = ({
     opacity: isDragging ? 0.4 : undefined,
     transform: CSS.Translate.toString(transform),
     transition,
+    touchAction: "none",
   };
 
   const renderQuestion = () => {
