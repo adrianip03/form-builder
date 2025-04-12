@@ -68,7 +68,7 @@ const MCQQuestion = ({
   };
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full">
       {isPreviewMode ? (
         <div className="preview-mcq-question">
           <p className="question-text">
@@ -103,7 +103,11 @@ const MCQQuestion = ({
           <div className="space-y-2">
             {choices.map((choice, index) => (
               <div key={index} className="flex items-center gap-2">
-                <input type="radio" disabled />
+                <IconButton
+                  iconProps={{ iconName: "Delete" }}
+                  onClick={() => removeChoice(index)}
+                  title="Remove choice"
+                />
                 <TextField
                   value={choice.text}
                   onChange={(_, newValue) => {
@@ -150,11 +154,6 @@ const MCQQuestion = ({
                     root: { width: "300px" },
                     dropdown: { width: "300px" },
                   }}
-                />
-                <IconButton
-                  iconProps={{ iconName: "Delete" }}
-                  onClick={() => removeChoice(index)}
-                  title="Remove choice"
                 />
               </div>
             ))}

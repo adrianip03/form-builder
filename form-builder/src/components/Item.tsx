@@ -1,6 +1,5 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useDraggable } from "@dnd-kit/core";
 import { IconButton } from "@fluentui/react";
 import { initializeIcons } from "@fluentui/react";
 import { ItemType, MCQQuestionType, TableQuestionType } from "./type";
@@ -38,9 +37,6 @@ const Item = ({
     transform,
     transition,
   } = useSortable({ id: item.id });
-  const { setNodeRef: setDragHandleRef } = useDraggable({
-    id: item.id,
-  });
 
   const style: CSSProperties = {
     opacity: isDragging ? 0.4 : undefined,
@@ -89,18 +85,15 @@ const Item = ({
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={`rounded outline gap-1 p-1 flex items-center ${
         isOver ? "is-over" : ""
       } ${isNew ? "is-new" : ""} ${isPreviewMode ? "preview-item" : ""}
 `}
     >
       {!isPreviewMode && (
-        <div
-          className="drag-handle"
-          ref={setDragHandleRef}
-          {...attributes}
-          {...listeners}
-        >
+        <div className="drag-handle">
           <IconButton iconProps={{ iconName: "GripperBarVertical" }} />
         </div>
       )}
