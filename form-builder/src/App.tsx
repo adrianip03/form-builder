@@ -28,7 +28,7 @@ import {
 } from "@fluentui/react";
 import { FormProvider } from "./context/FormContext";
 import QuestionControl from "./components/QuestionControl";
-
+import toast, { Toaster } from "react-hot-toast";
 function generateId(prefix = "") {
   return `${prefix}-${nanoid()}`;
 }
@@ -166,79 +166,209 @@ function App() {
   };
 
   // Submit form to backend
-  const handleSubmit = () => {
+  const formSubmit = async () => {
     console.log("Form submitted:", { formHeader, items });
-    fetch("http://localhost:3001/api/forms", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        formName: formHeader,
-        questions: items.map((item) => {
-          const baseQuestion = {
-            id: item.id,
-            questionType: item.type,
-            questionText: item.question || "",
-          };
+    try {
+      const response = await fetch("http://localhost:3001/api/forms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          formName: formHeader,
+          questions: items.map((item) => {
+            const baseQuestion = {
+              id: item.id,
+              questionType: item.type,
+              questionText: item.question || "",
+            };
 
-          if (item.type === "mcq") {
-            return {
-              ...baseQuestion,
-              choices:
-                (item as MCQQuestionType).choices?.map((choice) => ({
-                  text: choice.text,
-                  nextQuestionId: choice.nextQuestionId,
-                })) || [],
-            };
-          } else if (item.type === "table") {
-            return {
-              ...baseQuestion,
-              columns:
-                (item as TableQuestionType).columns?.map((column) => ({
-                  header: column.header,
-                  type: column.type,
-                  choices: column.choices,
-                })) || [],
-            };
-          }
-          return baseQuestion;
+            if (item.type === "mcq") {
+              return {
+                ...baseQuestion,
+                choices:
+                  (item as MCQQuestionType).choices?.map((choice) => ({
+                    text: choice.text,
+                    nextQuestionId: choice.nextQuestionId,
+                  })) || [],
+              };
+            } else if (item.type === "table") {
+              return {
+                ...baseQuestion,
+                columns:
+                  (item as TableQuestionType).columns?.map((column) => ({
+                    header: column.header,
+                    type: column.type,
+                    choices: column.choices,
+                  })) || [],
+              };
+            }
+            return baseQuestion;
+          }),
         }),
-      }),
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || "Failed to submit form");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Form submitted successfully:", data);
-        alert("Form submitted successfully!");
-      })
-      .catch((error) => {
-        console.error("Error submitting form:", error);
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to create form");
+      }
+
+      const data = await response.json();
+      console.log("Form created successfully:", data);
+      toast.success("Form created successfully!");
+      return true;
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      if (error instanceof Error) {
         if (error.message === "Failed to fetch") {
-          alert(
+          toast.error(
             "Unable to connect to the server. Please make sure the server is running."
           );
         } else {
-          alert(error.message || "An error occurred while submitting the form");
+          toast.error(
+            error.message || "An error occurred while submitting the form"
+          );
         }
-      });
+      }
+      return false;
+    }
   };
 
   // Toggle preview mode
   // Reset current question index and history
-  const handlePreviewModeToggle = () => {
-    setIsPreviewMode(!isPreviewMode);
+  const handlePreviewModeToggle = async () => {
     setCurrentQuestionIndex(0);
     setAnswers({});
+    if (!isPreviewMode) {
+      const err = checkFormError();
+      if (Object.keys(err).length > 0) {
+        toast.error(
+          Object.entries(err)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join("\n")
+        );
+      } else {
+        const success = await formSubmit();
+        if (success) {
+          setIsPreviewMode(!isPreviewMode);
+        }
+      }
+    } else {
+      setIsPreviewMode(!isPreviewMode);
+    }
+  };
+
+  const formHeaderError = () => {
+    if (formHeader.length === 0) {
+      return "Form title is required";
+    }
+    return null;
+  };
+
+  const questionsError = () => {
+    if (items.length === 0) {
+      return "Please add at least one question";
+    }
+    return null;
+  };
+
+  const questionTextError = (question: ItemType) => {
+    if (question.question.length === 0) {
+      return "Question is required";
+    }
+    return null;
+  };
+
+  const questionChoiceError = (question: MCQQuestionType) => {
+    let errors = [];
+    if (
+      !question.choices ||
+      (question.choices && question.choices.length === 0)
+    ) {
+      errors.push("Please add at least one choice");
+    }
+    if (question.choices && question.choices.length > 0) {
+      for (const choice of question.choices) {
+        if (choice.text.length === 0) {
+          errors.push("Choice text is required");
+        }
+      }
+    }
+    return errors;
+  };
+
+  const questionTableError = (question: TableQuestionType) => {
+    let errors = [];
+    if (
+      (question.columns && question.columns.length === 0) ||
+      !question.columns
+    ) {
+      errors.push("Please add at least one column");
+    }
+    if (question.columns && question.columns.length > 0) {
+      for (const column of question.columns) {
+        if (column.header.length === 0) {
+          errors.push("Column header is required");
+        }
+        if (column.type === "mcq" && column.choices?.length === 0) {
+          errors.push("Please add at least one choice");
+        }
+      }
+    }
+    return errors;
+  };
+
+  const checkFormError = () => {
+    let validationErrors = {};
+    if (formHeaderError()) {
+      validationErrors = {
+        ...validationErrors,
+        formHeader: formHeaderError() || "",
+      };
+    }
+    if (questionsError()) {
+      validationErrors = {
+        ...validationErrors,
+        questions: questionsError() || "",
+      };
+    }
+    items.forEach((question, index) => {
+      if (questionTextError(question)) {
+        validationErrors = {
+          ...validationErrors,
+          [`question-${index + 1}`]: questionTextError(question) || "",
+        };
+      }
+      if (question.type === "mcq") {
+        const mcqQuestion = question as MCQQuestionType;
+        const choiceErrors = questionChoiceError(mcqQuestion);
+        if (choiceErrors.length > 0) {
+          choiceErrors.forEach((error, choiceIndex) => {
+            validationErrors = {
+              ...validationErrors,
+              [`question-${index + 1}-choice-${choiceIndex + 1}`]: error || "",
+            };
+          });
+        }
+      }
+      if (question.type === "table") {
+        const tableQuestion = question as TableQuestionType;
+        if (questionTableError(tableQuestion)) {
+          questionTableError(tableQuestion).forEach((error, columnIndex) => {
+            validationErrors = {
+              ...validationErrors,
+              [`question-${index + 1}-column-${columnIndex + 1}`]: error || "",
+            };
+          });
+        }
+      }
+    });
+    return validationErrors;
   };
 
   return (
     <div className="App">
+      <Toaster />
       <FormProvider items={items}>
         <DndContext
           sensors={sensors}
@@ -254,10 +384,11 @@ function App() {
               <TextField
                 value={formHeader}
                 onChange={(_, newValue) => setFormHeader(newValue || "")}
-                placeholder="Form Title"
+                placeholder="Enter form title"
                 underlined
                 styles={formHeaderStyles}
                 disabled={isPreviewMode}
+                errorMessage={formHeaderError()}
               />
               {/* Preview/Edit Button */}
               <div className="flex gap-2">
@@ -265,9 +396,7 @@ function App() {
                   text={isPreviewMode ? "Edit" : "Preview"}
                   onClick={handlePreviewModeToggle}
                 />
-                {isPreviewMode && (
-                  <PrimaryButton text="Submit" onClick={handleSubmit} />
-                )}
+                {isPreviewMode && <PrimaryButton text="Submit" />}
               </div>
             </div>
             {/* Form Body */}
