@@ -413,9 +413,12 @@ function App() {
               text: answer.text,
             };
           } else if (question.type === "mcq") {
+            const selectedChoice = (question as MCQQuestionType).choices[
+              parseInt(answer.choice || "0")
+            ];
             return {
               ...baseAnswer,
-              choiceId: answer.choice,
+              choiceText: selectedChoice?.text || null,
             };
           } else if (question.type === "table") {
             return {
