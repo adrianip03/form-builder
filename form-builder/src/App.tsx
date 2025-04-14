@@ -140,7 +140,7 @@ function App() {
   // };
 
   // Change ...data of question at items[id]
-  const handleQuestionChange = (id: string, data: any) => {
+  const handleQuestionChange = (id: string, data: Partial<ItemType>) => {
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, ...data } : item))
     );
@@ -276,7 +276,7 @@ function App() {
   };
 
   const textConstraintsError = (minLength?: number, maxLength?: number) => {
-    let errors = [];
+    const errors = [];
     if (minLength !== undefined && minLength < 0) {
       errors.push("Minimum length must be greater than or equal to 0");
     }
@@ -294,7 +294,7 @@ function App() {
   };
 
   const questionChoiceError = (question: MCQQuestionType) => {
-    let errors = [];
+    const errors = [];
     if (
       !question.choices ||
       (question.choices && question.choices.length === 0)
@@ -312,7 +312,7 @@ function App() {
   };
 
   const questionTableError = (question: TableQuestionType) => {
-    let errors = [];
+    const errors = [];
     if (
       (question.columns && question.columns.length === 0) ||
       !question.columns
