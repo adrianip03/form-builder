@@ -1,5 +1,5 @@
 import { TextField, IconButton, Dropdown } from "@fluentui/react";
-import { TableQuestionType, TableColumnType } from "./type";
+import { TableQuestionType, TableColumnType } from "./types";
 import { useState } from "react";
 
 interface Props {

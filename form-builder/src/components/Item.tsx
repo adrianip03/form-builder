@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IconButton } from "@fluentui/react";
 import { initializeIcons } from "@fluentui/react";
-import { ItemType, MCQQuestionType, TableQuestionType } from "./type";
+import { ItemType, MCQQuestionType, TableQuestionType } from "./types";
 import TextQuestion from "./TextQuestion";
 import MCQQuestion from "./MCQQuestion";
 import TableQuestion from "./TableQuestion";

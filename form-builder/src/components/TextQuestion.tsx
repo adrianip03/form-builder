@@ -1,5 +1,5 @@
 import { TextField } from "@fluentui/react";
-import { TextQuestionType } from "./type";
+import { TextQuestionType } from "./types";
 
 interface Props {
   question: TextQuestionType;

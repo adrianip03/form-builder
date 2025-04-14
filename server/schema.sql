@@ -48,3 +48,23 @@ CREATE TABLE IF NOT EXISTS TextConstraints (
     max_length INT,
     FOREIGN KEY (question_id) REFERENCES Questions(question_id) ON DELETE CASCADE
 );
+
+-- Submissions table
+CREATE TABLE IF NOT EXISTS Submissions (
+    submission_id INT AUTO_INCREMENT PRIMARY KEY,
+    form_id INT NOT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (form_id) REFERENCES Forms(form_id)
+);
+
+-- Answers table
+CREATE TABLE IF NOT EXISTS Answers (
+    answer_id INT AUTO_INCREMENT PRIMARY KEY,
+    submission_id INT NOT NULL,
+    question_id INT NOT NULL,
+    answer_text TEXT,
+    answer_choice_text TEXT,
+    answer_table_data JSON,
+    FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id),
+    FOREIGN KEY (question_id) REFERENCES Questions(question_id)
+);

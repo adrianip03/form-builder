@@ -1,4 +1,4 @@
-import { ItemType, TextQuestionType } from "../components/type";
+import { ItemType, TextQuestionType } from "../components/types";
 
 export const validateTextQuestion = (
   question: TextQuestionType,
@@ -23,4 +23,4 @@ export const isQuestionValid = (
     return validateTextQuestion(question as TextQuestionType, answer);
   }
   return true;
-}; 
+};

@@ -353,6 +353,110 @@ app.post('/api/forms', async (req, res, next) => {
   }
 });
 
+// Submit form answers
+app.post('/api/forms/:formId/answers', async (req, res) => {
+  const { formId } = req.params;
+  const { answers } = req.body;
+
+  try {
+    // Start a transaction
+    await new Promise((resolve, reject) => {
+      db.query('START TRANSACTION', (err) => {
+        if (err) reject(new DatabaseError('Failed to start transaction', err));
+        else resolve();
+      });
+    });
+
+    // Create a submission record
+    const submissionResult = await new Promise((resolve, reject) => {
+      db.query(
+        'INSERT INTO Submissions (form_id) VALUES (?)',
+        [formId],
+        (err, result) => {
+          if (err) reject(new DatabaseError('Failed to create submission', err));
+          else resolve(result);
+        }
+      );
+    });
+
+    // Get the first question ID for this form
+    const firstQuestionId = await new Promise((resolve, reject) => {
+      db.query(
+        'SELECT question_id FROM Questions WHERE form_id = ? ORDER BY question_id ASC LIMIT 1',
+        [formId],
+        (err, result) => {
+          if (err) reject(new DatabaseError('Failed to get first question', err));
+          else resolve(result[0].question_id);
+        }
+      );
+    });
+
+    if (!firstQuestionId) {
+      throw new DatabaseError('No questions found for this form');
+    }
+
+    const submissionId = submissionResult.insertId;
+
+    // Insert each answer
+    answers.forEach(async (answer, index) => {
+      await new Promise((resolve, reject) => {
+        const currentQuestionId = firstQuestionId + index;
+        console.log('Inserting answer:', {
+          submissionId,
+          questionId: currentQuestionId,
+          text: answer.text,
+          choiceText: answer.choiceText,
+          tableData: answer.tableData
+        });
+        
+        db.query(
+          `INSERT INTO Answers (submission_id, question_id, answer_text, answer_choice_text, answer_table_data)
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            submissionId,
+            currentQuestionId,
+            answer.text,
+            answer.choiceText,
+            answer.tableData ? JSON.stringify(answer.tableData) : null
+          ],
+          (err) => {
+            if (err) {
+              console.error('Database error:', err);
+              reject(new DatabaseError(`Failed to insert answer: ${err.message}`, err));
+            } else {
+              resolve();
+            }
+          }
+        );
+      });
+    });
+
+    // Commit the transaction
+    await new Promise((resolve, reject) => {
+      db.query('COMMIT', (err) => {
+        if (err) reject(new DatabaseError('Failed to commit transaction', err));
+        else resolve();
+      });
+    });
+
+    res.status(201).json({ 
+      message: 'Answers submitted successfully',
+      submissionId 
+    });
+  } catch (err) {
+    // Rollback transaction on error
+    await new Promise((resolve) => {
+      db.query('ROLLBACK', () => resolve());
+    });
+
+    if (err instanceof DatabaseError) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: 'An unexpected error occurred' });
+    }
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);

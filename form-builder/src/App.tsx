@@ -19,7 +19,7 @@ import {
   MCQQuestionType,
   TableQuestionType,
   TextQuestionType,
-} from "./components/type";
+} from "./components/types";
 import Item from "./components/Item";
 import { FormProvider } from "./context/FormContext";
 import QuestionControl from "./components/QuestionControl";
@@ -51,6 +51,7 @@ function App() {
   const [formHeader, setFormHeader] = useState<string>("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
+  const [formId, setFormId] = useState<string>("");
 
   // DnD Sensors
   const sensors = useSensors(
@@ -210,6 +211,7 @@ function App() {
       const data = await response.json();
       console.log("Form created successfully:", data);
       toast.success("Form created successfully!");
+      setFormId(data.formId);
       return true;
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -273,6 +275,24 @@ function App() {
     return null;
   };
 
+  const textConstraintsError = (minLength?: number, maxLength?: number) => {
+    let errors = [];
+    if (minLength !== undefined && minLength < 0) {
+      errors.push("Minimum length must be greater than or equal to 0");
+    }
+    if (maxLength !== undefined && maxLength < 0) {
+      errors.push("Maximum length must be greater than or equal to 0");
+    }
+    if (
+      minLength !== undefined &&
+      maxLength !== undefined &&
+      maxLength <= minLength
+    ) {
+      errors.push("Maximum length must be greater than minimum length");
+    }
+    return errors;
+  };
+
   const questionChoiceError = (question: MCQQuestionType) => {
     let errors = [];
     if (
@@ -333,6 +353,21 @@ function App() {
           [`question-${index + 1}`]: questionTextError(question) || "",
         };
       }
+      if (question.type === "text") {
+        const textQuestion = question as TextQuestionType;
+        const constraintError = textConstraintsError(
+          textQuestion.minLength,
+          textQuestion.maxLength
+        );
+        if (constraintError.length > 0) {
+          constraintError.forEach((error) => {
+            validationErrors = {
+              ...validationErrors,
+              [`question-${index + 1}-constraints`]: error,
+            };
+          });
+        }
+      }
       if (question.type === "mcq") {
         const mcqQuestion = question as MCQQuestionType;
         const choiceErrors = questionChoiceError(mcqQuestion);
@@ -360,6 +395,76 @@ function App() {
     return validationErrors;
   };
 
+  const handleSubmitAnswers = async () => {
+    try {
+      // Convert answers to the format expected by the backend
+      const formattedAnswers = Object.entries(answers)
+        .map(([questionId, answer]) => {
+          const question = items.find((item) => item.id === questionId);
+          if (!question) return null;
+
+          const baseAnswer = {
+            questionId: question.id,
+          };
+
+          if (question.type === "text") {
+            return {
+              ...baseAnswer,
+              text: answer.text,
+            };
+          } else if (question.type === "mcq") {
+            return {
+              ...baseAnswer,
+              choiceId: answer.choice,
+            };
+          } else if (question.type === "table") {
+            return {
+              ...baseAnswer,
+              tableData: answer.tableAnswers,
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      console.log("Submitting answers:", {
+        formId,
+        answers: formattedAnswers,
+      });
+
+      const response = await fetch(
+        `http://localhost:3001/api/forms/${formId}/answers`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            answers: formattedAnswers,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.error("Server response:", data);
+        throw new Error(data.error || "Failed to submit answers");
+      }
+
+      toast.success("Answers submitted successfully!");
+      // Reset the form or navigate away
+      setAnswers({});
+      setCurrentQuestionIndex(0);
+    } catch (error) {
+      console.error("Error submitting answers:", error);
+      if (error instanceof Error) {
+        toast.error(
+          error.message || "An error occurred while submitting answers"
+        );
+      }
+    }
+  };
+
   return (
     <div className="App">
       <Toaster />
@@ -380,6 +485,7 @@ function App() {
               handlePreviewModeToggle={handlePreviewModeToggle}
               formHeaderError={formHeaderError}
               answers={answers}
+              onSubmit={handleSubmitAnswers}
             />
             {/* Form Body */}
             <div className="flex">

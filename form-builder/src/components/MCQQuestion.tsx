@@ -1,5 +1,5 @@
 import { TextField, IconButton, Dropdown } from "@fluentui/react";
-import { MCQQuestionType, BranchingChoice } from "./type";
+import { MCQQuestionType, BranchingChoice } from "./types";
 import { useEffect, useState } from "react";
 import { useFormContext } from "../context/FormContext";
 

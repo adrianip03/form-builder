@@ -34,3 +34,9 @@ export interface TableColumnType {
 export interface TableQuestionType extends ItemType {
   columns: TableColumnType[];
 }
+
+export interface Answer {
+  text?: string;
+  choice?: string;
+  tableAnswers?: Record<string, string>;
+} 

@@ -3,18 +3,17 @@ import { ITextFieldStyles } from "@fluentui/react";
 import { useFormContext } from "../context/FormContext";
 import { useEffect } from "react";
 import { isQuestionValid } from "../utils/validation";
+import { Answer } from "./types";
 
 interface Props {
-  formHeader: string;
-  setFormHeader: (value: string) => void;
-  isPreviewMode: boolean;
-  handlePreviewModeToggle: () => void;
-  formHeaderError: () => string | null;
   currentQuestionIndex: number;
-  answers: Record<
-    string,
-    { text?: string; choice?: string; tableAnswers?: Record<string, string> }
-  >;
+  formHeader: string;
+  setFormHeader: (header: string) => void;
+  isPreviewMode: boolean;
+  handlePreviewModeToggle: () => Promise<void>;
+  formHeaderError: () => string | null;
+  answers: Record<string, Answer>;
+  onSubmit: () => Promise<void>;
 }
 
 const formHeaderStyles: Partial<ITextFieldStyles> = {
@@ -25,15 +24,16 @@ const formHeaderStyles: Partial<ITextFieldStyles> = {
   },
 };
 
-export default function TopBar({
+const TopBar = ({
+  currentQuestionIndex,
   formHeader,
   setFormHeader,
   isPreviewMode,
   handlePreviewModeToggle,
   formHeaderError,
-  currentQuestionIndex,
   answers,
-}: Props) {
+  onSubmit,
+}: Props) => {
   const { items, nextQuestionId } = useFormContext();
 
   const isLastQuestion = () => {
@@ -71,9 +71,12 @@ export default function TopBar({
           <PrimaryButton
             text="Submit"
             disabled={!isLastQuestion() || !isCurrentQuestionValid()}
+            onClick={onSubmit}
           />
         )}
       </div>
     </div>
   );
-}
+};
+
+export default TopBar;

@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useState } from "react";
-import { ItemType } from "../components/type";
+import { ItemType } from "../components/types";
 
 interface FormContextType {
   items: ItemType[];
