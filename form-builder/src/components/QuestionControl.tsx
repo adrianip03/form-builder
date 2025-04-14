@@ -36,6 +36,7 @@ const QuestionControl = ({
         items.findIndex((item) => item.id === nextQuestionId)
       );
       // Clear nextQuestionId after setting the new index
+      // Timeout is used to avoid nextQuestionId being reset before the new index is set for mcq questions
       setTimeout(() => setNextQuestionId(""), 0);
     } else if (currentQuestionIndex < items.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
@@ -43,7 +44,6 @@ const QuestionControl = ({
   };
 
   const isLastQuestion = () => {
-    const { nextQuestionId } = useFormContext();
     return currentQuestionIndex === items.length - 1 && !nextQuestionId;
   };
 

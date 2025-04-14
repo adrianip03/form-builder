@@ -29,6 +29,8 @@ import {
 import { FormProvider } from "./context/FormContext";
 import QuestionControl from "./components/QuestionControl";
 import toast, { Toaster } from "react-hot-toast";
+import TopBar from "./components/TopBar";
+
 function generateId(prefix = "") {
   return `${prefix}-${nanoid()}`;
 }
@@ -378,27 +380,14 @@ function App() {
           onDragOver={handleDragOver}
         >
           <div>
-            {/* Top Bar*/}
-            <div className="flex justify-between items-center p-4 border-b">
-              {/* Form Header */}
-              <TextField
-                value={formHeader}
-                onChange={(_, newValue) => setFormHeader(newValue || "")}
-                placeholder="Enter form title"
-                underlined
-                styles={formHeaderStyles}
-                disabled={isPreviewMode}
-                errorMessage={formHeaderError()}
-              />
-              {/* Preview/Edit Button */}
-              <div className="flex gap-2">
-                <DefaultButton
-                  text={isPreviewMode ? "Edit" : "Preview"}
-                  onClick={handlePreviewModeToggle}
-                />
-                {isPreviewMode && <PrimaryButton text="Submit" />}
-              </div>
-            </div>
+            <TopBar
+              currentQuestionIndex={currentQuestionIndex}
+              formHeader={formHeader}
+              setFormHeader={setFormHeader}
+              isPreviewMode={isPreviewMode}
+              handlePreviewModeToggle={handlePreviewModeToggle}
+              formHeaderError={formHeaderError}
+            />
             {/* Form Body */}
             <div className="flex">
               {/* Form Panel */}

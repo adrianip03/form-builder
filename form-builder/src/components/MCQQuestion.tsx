@@ -119,31 +119,17 @@ const MCQQuestion = ({
                   underlined
                 />
                 <Dropdown
-                  options={items.map((item, index) => {
-                    const selfIndex = items.findIndex(
-                      (item) => item.id === question.id
-                    );
-                    return index === selfIndex
-                      ? {
-                          key: item.id,
-                          text: `${index + 1}. (self) ${
-                            item.question || "Untitled Question"
-                          }`,
-                        }
-                      : index === selfIndex + 1
-                      ? {
-                          key: item.id,
-                          text: `${index + 1}. (next) ${
-                            item.question || "Untitled Question"
-                          }`,
-                        }
-                      : {
-                          key: item.id,
-                          text: `${index + 1}. ${
-                            item.question || "Untitled Question"
-                          }`,
-                        };
-                  })}
+                  options={[
+                    { key: "", text: "Next" },
+                    ...items
+                      .filter((item) => item.id !== question.id)
+                      .map((item, index) => ({
+                        key: item.id,
+                        text: `${index + 1}. ${
+                          item.question || "Untitled Question"
+                        }`,
+                      })),
+                  ]}
                   selectedKey={choice.nextQuestionId}
                   onChange={(_, option) => {
                     if (option) {

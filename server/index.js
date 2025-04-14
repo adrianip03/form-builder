@@ -255,8 +255,6 @@ app.post('/api/forms', async (req, res, next) => {
     
     // Create a map of client IDs to database IDs
     const questionIdMap = new Map(questionResults.map(r => [r.clientId, r.dbId]));
-    
-    console.log(questionIdMap);
 
     // Save MCQ choices and table columns in parallel
     await Promise.all(questions.map(question => {
@@ -264,7 +262,6 @@ app.post('/api/forms', async (req, res, next) => {
       
       if (question.questionType === 'mcq' && question.choices) {
         const values = question.choices.map(choice => { 
-          console.log(choice.nextQuestionId, questionIdMap.get(choice.nextQuestionId));
           return[
           dbQuestionId,
           choice.text,
