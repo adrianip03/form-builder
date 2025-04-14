@@ -71,6 +71,11 @@ const TextQuestion = ({
             }}
             placeholder="Enter your question here"
             underlined
+            errorMessage={
+              !question.question || question.question.trim().length === 0
+                ? "Question is required"
+                : undefined
+            }
           />
           <div className="flex gap-4">
             <TextField

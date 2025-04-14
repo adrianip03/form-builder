@@ -24,6 +24,7 @@ export const FormProvider = ({ children, items }: Props) => {
   );
 };
 
+// TODO: explore fast refresh
 export const useFormContext = () => {
   const context = useContext(FormContext);
   if (context === undefined) {

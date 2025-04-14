@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IconButton } from "@fluentui/react";
 import { initializeIcons } from "@fluentui/react";
-import { ItemType, MCQQuestionType, TableQuestionType } from "./types";
+import { ItemType, MCQQuestionType, TableQuestionType, Answer } from "./types";
 import TextQuestion from "./TextQuestion";
 import MCQQuestion from "./MCQQuestion";
 import TableQuestion from "./TableQuestion";
@@ -15,9 +15,9 @@ interface Props {
   isOver: boolean;
   isPreviewMode?: boolean;
   isNew?: boolean;
-  onQuestionChange?: (id: string, data: any) => void;
-  onAnswerChange?: (questionId: string, answer: any) => void;
-  answer?: any;
+  onQuestionChange?: (id: string, data: Partial<ItemType>) => void;
+  onAnswerChange?: (questionId: string, answer: Answer) => void;
+  answer?: Answer;
 }
 
 const Item = ({

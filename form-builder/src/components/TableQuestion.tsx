@@ -104,13 +104,13 @@ const TableQuestion = ({
     onQuestionChange(question.id, { columns: newColumns });
   };
 
-  const handleTableAnswerChange = (columnId: string, value: string) => {
+  const handleTableAnswerChange = (columnIndex: number, value: string) => {
     if (onAnswerChange) {
       const currentAnswers = answer?.tableAnswers || {};
       onAnswerChange(question.id, {
         tableAnswers: {
           ...currentAnswers,
-          [columnId]: value,
+          [columnIndex]: value,
         },
       });
     }
@@ -134,10 +134,10 @@ const TableQuestion = ({
                     <TextField
                       placeholder="Your answer here"
                       underlined
-                      value={answer?.tableAnswers?.[column.id] || ""}
+                      value={answer?.tableAnswers?.[index] || ""}
                       onChange={(_, newValue) => {
                         if (newValue !== undefined) {
-                          handleTableAnswerChange(column.id, newValue);
+                          handleTableAnswerChange(index, newValue);
                         }
                       }}
                     />
@@ -149,13 +149,10 @@ const TableQuestion = ({
                         text: choice || `Option ${index + 1}`,
                       }))}
                       placeholder="Select an option"
-                      selectedKey={answer?.tableAnswers?.[column.id]}
+                      selectedKey={answer?.tableAnswers?.[index]}
                       onChange={(_, option) => {
                         if (option) {
-                          handleTableAnswerChange(
-                            column.id,
-                            option.key as string
-                          );
+                          handleTableAnswerChange(index, option.key as string);
                         }
                       }}
                     />
@@ -176,6 +173,13 @@ const TableQuestion = ({
             }}
             placeholder="Enter your question here"
             underlined
+            errorMessage={
+              !question.question || question.question.trim().length === 0
+                ? "Question is required"
+                : columns.length === 0
+                ? "At least one column is required"
+                : undefined
+            }
           />
           <div className="space-y-2">
             <div className="table-header">
@@ -191,6 +195,14 @@ const TableQuestion = ({
                       }}
                       placeholder={`Column ${columnIndex + 1}`}
                       underlined
+                      errorMessage={
+                        !column.header || column.header.trim().length === 0
+                          ? "Column header is required"
+                          : column.type === "mcq" &&
+                            (!column.choices || column.choices.length === 0)
+                          ? "At least one choice is required"
+                          : undefined
+                      }
                     />
                     <Dropdown
                       options={[
@@ -234,6 +246,11 @@ const TableQuestion = ({
                             }}
                             placeholder={`Choice ${choiceIndex + 1}`}
                             underlined
+                            errorMessage={
+                              !choice || choice.trim().length === 0
+                                ? "Choice text is required"
+                                : undefined
+                            }
                           />
                           <IconButton
                             iconProps={{ iconName: "Delete" }}

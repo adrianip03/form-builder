@@ -99,6 +99,13 @@ const MCQQuestion = ({
             }}
             placeholder="Enter your question here"
             underlined
+            errorMessage={
+              !question.question || question.question.trim().length === 0
+                ? "Question is required"
+                : !question.choices || question.choices.length === 0
+                ? "At least one choice is required"
+                : undefined
+            }
           />
           <div className="space-y-2">
             {choices.map((choice, index) => (
@@ -117,6 +124,11 @@ const MCQQuestion = ({
                   }}
                   placeholder={`Choice ${index + 1}`}
                   underlined
+                  errorMessage={
+                    !choice.text || choice.text.trim().length === 0
+                      ? "Choice text is required"
+                      : undefined
+                  }
                 />
                 <Dropdown
                   options={[

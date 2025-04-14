@@ -1,7 +1,6 @@
 import { TextField, PrimaryButton, DefaultButton } from "@fluentui/react";
 import { ITextFieldStyles } from "@fluentui/react";
 import { useFormContext } from "../context/FormContext";
-import { useEffect } from "react";
 import { isQuestionValid } from "../utils/validation";
 import { Answer } from "./types";
 
@@ -45,11 +44,6 @@ const TopBar = ({
     const answer = answers[currentQuestion.id];
     return isQuestionValid(currentQuestion, answer);
   };
-
-  useEffect(() => {
-    console.log(nextQuestionId);
-    console.log(isLastQuestion());
-  }, [nextQuestionId]);
 
   return (
     <div className="flex justify-between items-center p-4 border-b">
