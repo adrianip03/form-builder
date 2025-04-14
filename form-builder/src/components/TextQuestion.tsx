@@ -1,10 +1,13 @@
 import { TextField } from "@fluentui/react";
-import { ItemType } from "./type";
+import { TextQuestionType } from "./type";
 
 interface Props {
-  question: ItemType;
+  question: TextQuestionType;
   isPreviewMode?: boolean;
-  onQuestionChange: (id: string, data: { question?: string }) => void;
+  onQuestionChange: (
+    id: string,
+    data: { question?: string; minLength?: number; maxLength?: number }
+  ) => void;
   onAnswerChange?: (questionId: string, answer: { text: string }) => void;
   answer?: { text?: string };
 }
@@ -16,6 +19,20 @@ const TextQuestion = ({
   onAnswerChange,
   answer,
 }: Props) => {
+  const handleQuestionChange = (value: string) => {
+    onQuestionChange(question.id, { question: value });
+  };
+
+  const handleMinLengthChange = (value: string) => {
+    const numValue = value === "" ? undefined : parseInt(value);
+    onQuestionChange(question.id, { minLength: numValue });
+  };
+
+  const handleMaxLengthChange = (value: string) => {
+    const numValue = value === "" ? undefined : parseInt(value);
+    onQuestionChange(question.id, { maxLength: numValue });
+  };
+
   return (
     <div className="w-full">
       {isPreviewMode ? (
@@ -32,19 +49,56 @@ const TextQuestion = ({
                 onAnswerChange(question.id, { text: newValue });
               }
             }}
+            errorMessage={
+              question.minLength &&
+              (answer?.text?.length || 0) < question.minLength
+                ? `Minimum length is ${question.minLength} characters`
+                : question.maxLength &&
+                  (answer?.text?.length || 0) > question.maxLength
+                ? `Maximum length is ${question.maxLength} characters`
+                : undefined
+            }
           />
         </div>
       ) : (
-        <TextField
-          value={question.question || ""}
-          onChange={(_, newValue) => {
-            if (newValue !== undefined) {
-              onQuestionChange(question.id, { question: newValue });
-            }
-          }}
-          placeholder="Enter your question here"
-          underlined
-        />
+        <div className="space-y-2">
+          <TextField
+            value={question.question || ""}
+            onChange={(_, newValue) => {
+              if (newValue !== undefined) {
+                handleQuestionChange(newValue);
+              }
+            }}
+            placeholder="Enter your question here"
+            underlined
+          />
+          <div className="flex gap-4">
+            <TextField
+              label="Min Length"
+              type="number"
+              value={question.minLength?.toString() || ""}
+              onChange={(_, newValue) => {
+                if (newValue !== undefined) {
+                  handleMinLengthChange(newValue);
+                }
+              }}
+              placeholder="No minimum"
+              styles={{ root: { width: "150px" } }}
+            />
+            <TextField
+              label="Max Length"
+              type="number"
+              value={question.maxLength?.toString() || ""}
+              onChange={(_, newValue) => {
+                if (newValue !== undefined) {
+                  handleMaxLengthChange(newValue);
+                }
+              }}
+              placeholder="No maximum"
+              styles={{ root: { width: "150px" } }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

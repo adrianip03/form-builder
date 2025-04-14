@@ -10,8 +10,10 @@ export interface ContainerType {
   content: ItemType[];
 }
 
-// export interface TextQuestionType extends ItemType {
-// }
+export interface TextQuestionType extends ItemType {
+  minLength?: number;
+  maxLength?: number;
+}
 
 export interface BranchingChoice {
   text: string;

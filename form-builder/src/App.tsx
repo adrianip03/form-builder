@@ -18,14 +18,9 @@ import {
   ItemType,
   MCQQuestionType,
   TableQuestionType,
+  TextQuestionType,
 } from "./components/type";
 import Item from "./components/Item";
-import {
-  ITextFieldStyles,
-  TextField,
-  PrimaryButton,
-  DefaultButton,
-} from "@fluentui/react";
 import { FormProvider } from "./context/FormContext";
 import QuestionControl from "./components/QuestionControl";
 import toast, { Toaster } from "react-hot-toast";
@@ -143,15 +138,6 @@ function App() {
   //   }),
   // };
 
-  // Form Header Styles
-  const formHeaderStyles: Partial<ITextFieldStyles> = {
-    field: {
-      fontSize: "2rem",
-      fontWeight: 600,
-      color: "#666",
-    },
-  };
-
   // Change ...data of question at items[id]
   const handleQuestionChange = (id: string, data: any) => {
     setItems((prev) =>
@@ -185,7 +171,13 @@ function App() {
               questionText: item.question || "",
             };
 
-            if (item.type === "mcq") {
+            if (item.type === "text") {
+              return {
+                ...baseQuestion,
+                minLength: (item as TextQuestionType).minLength,
+                maxLength: (item as TextQuestionType).maxLength,
+              };
+            } else if (item.type === "mcq") {
               return {
                 ...baseQuestion,
                 choices:
@@ -387,6 +379,7 @@ function App() {
               isPreviewMode={isPreviewMode}
               handlePreviewModeToggle={handlePreviewModeToggle}
               formHeaderError={formHeaderError}
+              answers={answers}
             />
             {/* Form Body */}
             <div className="flex">
@@ -417,6 +410,7 @@ function App() {
                         currentQuestionIndex={currentQuestionIndex}
                         isPreview={isPreviewMode}
                         setCurrentQuestionIndex={setCurrentQuestionIndex}
+                        answers={answers}
                       />
                     </>
                   ) : (

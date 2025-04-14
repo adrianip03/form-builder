@@ -2,6 +2,7 @@ import { TextField, PrimaryButton, DefaultButton } from "@fluentui/react";
 import { ITextFieldStyles } from "@fluentui/react";
 import { useFormContext } from "../context/FormContext";
 import { useEffect } from "react";
+import { isQuestionValid } from "../utils/validation";
 
 interface Props {
   formHeader: string;
@@ -10,6 +11,10 @@ interface Props {
   handlePreviewModeToggle: () => void;
   formHeaderError: () => string | null;
   currentQuestionIndex: number;
+  answers: Record<
+    string,
+    { text?: string; choice?: string; tableAnswers?: Record<string, string> }
+  >;
 }
 
 const formHeaderStyles: Partial<ITextFieldStyles> = {
@@ -27,11 +32,18 @@ export default function TopBar({
   handlePreviewModeToggle,
   formHeaderError,
   currentQuestionIndex,
+  answers,
 }: Props) {
   const { items, nextQuestionId } = useFormContext();
 
   const isLastQuestion = () => {
     return currentQuestionIndex === items.length - 1 && !nextQuestionId;
+  };
+
+  const isCurrentQuestionValid = () => {
+    const currentQuestion = items[currentQuestionIndex];
+    const answer = answers[currentQuestion.id];
+    return isQuestionValid(currentQuestion, answer);
   };
 
   useEffect(() => {
@@ -56,7 +68,10 @@ export default function TopBar({
           onClick={handlePreviewModeToggle}
         />
         {isPreviewMode && (
-          <PrimaryButton text="Submit" disabled={!isLastQuestion()} />
+          <PrimaryButton
+            text="Submit"
+            disabled={!isLastQuestion() || !isCurrentQuestionValid()}
+          />
         )}
       </div>
     </div>

@@ -268,7 +268,6 @@ app.post('/api/forms', async (req, res, next) => {
           choice.nextQuestionId ? questionIdMap.get(choice.nextQuestionId) : null
         ]});
 
-        
         return new Promise((resolve, reject) => {
           db.query(
             'INSERT INTO MCQChoices (question_id, choice_text, next_question_id) VALUES ?',
@@ -276,6 +275,20 @@ app.post('/api/forms', async (req, res, next) => {
             (err) => {
               if (err) {
                 reject(new DatabaseError('Failed to save MCQ choices', err));
+                return;
+              }
+              resolve();
+            }
+          );
+        });
+      } else if (question.questionType === 'text' && (question.minLength || question.maxLength)) {
+        return new Promise((resolve, reject) => {
+          db.query(
+            'INSERT INTO TextConstraints (question_id, min_length, max_length) VALUES (?, ?, ?)',
+            [dbQuestionId, question.minLength || null, question.maxLength || null],
+            (err) => {
+              if (err) {
+                reject(new DatabaseError('Failed to save text constraints', err));
                 return;
               }
               resolve();

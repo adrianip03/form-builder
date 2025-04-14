@@ -1,24 +1,36 @@
 import { DefaultButton } from "@fluentui/react";
 import { useFormContext } from "../context/FormContext";
 import { useState, useEffect } from "react";
+import { isQuestionValid } from "../utils/validation";
 
 interface Props {
   currentQuestionIndex: number;
-  isPreview: Boolean;
+  isPreview: boolean;
   setCurrentQuestionIndex: (index: number) => void;
+  answers: Record<
+    string,
+    { text?: string; choice?: string; tableAnswers?: Record<string, string> }
+  >;
 }
+
 const QuestionControl = ({
   currentQuestionIndex,
   isPreview,
   setCurrentQuestionIndex,
+  answers,
 }: Props) => {
   const [history, setHistory] = useState<number[]>([]);
+  const { nextQuestionId, setNextQuestionId, items } = useFormContext();
 
   useEffect(() => {
     setHistory([]);
   }, [isPreview]);
 
-  const { nextQuestionId, setNextQuestionId, items } = useFormContext();
+  const isCurrentQuestionValid = () => {
+    const currentQuestion = items[currentQuestionIndex];
+    const answer = answers[currentQuestion.id];
+    return isQuestionValid(currentQuestion, answer);
+  };
 
   // Handle previous question in preview mode
   const handlePreviousQuestion = () => {
@@ -30,6 +42,8 @@ const QuestionControl = ({
 
   // Handle next question in preview mode
   const handleNextQuestion = () => {
+    if (!isCurrentQuestionValid()) return;
+
     setHistory((prev) => [...prev, currentQuestionIndex]);
     if (nextQuestionId) {
       setCurrentQuestionIndex(
@@ -57,7 +71,7 @@ const QuestionControl = ({
       <DefaultButton
         text="Next"
         onClick={handleNextQuestion}
-        disabled={isLastQuestion()}
+        disabled={isLastQuestion() || !isCurrentQuestionValid()}
       />
     </div>
   );

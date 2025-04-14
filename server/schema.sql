@@ -40,3 +40,11 @@ CREATE TABLE IF NOT EXISTS TableColumnChoices (
     choice_text TEXT NOT NULL,
     FOREIGN KEY (column_id) REFERENCES TableColumns(column_id)
 );
+
+-- Text Constraints table
+CREATE TABLE IF NOT EXISTS TextConstraints (
+    question_id INT PRIMARY KEY,
+    min_length INT,
+    max_length INT,
+    FOREIGN KEY (question_id) REFERENCES Questions(question_id) ON DELETE CASCADE
+);
